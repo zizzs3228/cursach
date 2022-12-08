@@ -45,6 +45,27 @@ async def table_get_value(db_connection: sqlite3.Connection, table_name: str, va
         print(f"Failed to fetch {field} from {table_name}! Error: {error}")
         return None
 
+
+async def table_get_codes(db_connection: sqlite3.Connection, table_name: str, id:str='id', column:str = 'code') -> list:
+    cursor = db_connection.cursor()
+    sql_statement = """SELECT %s FROM %s WHERE %s IS NULL""" % (column,table_name, id)
+    try:
+        cursor.execute(sql_statement)
+        return cursor.fetchall()
+    except sqlite3.Error as error:
+        print(f"Failed to fetch {column} from {table_name}! Error: {error}")
+        return None
+
+async def table_get_ids(db_connection: sqlite3.Connection, table_name: str, id:str='id', column:str = 'id') -> list:
+    cursor = db_connection.cursor()
+    sql_statement = """SELECT %s FROM %s WHERE %s IS NOT NULL""" % (column,table_name, id)
+    try:
+        cursor.execute(sql_statement)
+        return cursor.fetchall()
+    except sqlite3.Error as error:
+        print(f"Failed to fetch {column} from {table_name}! Error: {error}")
+        return None
+
 async def table_delete(db_connection: sqlite3.Connection, table_name: str) -> bool:
     cursor = db_connection.cursor()
     sql_statement = """DROP TABLE %s""" % table_name
@@ -71,9 +92,9 @@ async def table_fetch_first(db_connection: sqlite3.Connection, table_name: str) 
         print(f"Failed to fetch from {table_name}! Error: {error}")
         return None
 
-async def table_update_value(db_connection: sqlite3.Connection, table_name: str, search_field: str, search_field_value: str, field: str, new_value: str) -> bool:
+async def table_update_value(db_connection: sqlite3.Connection, table_name: str, field: str, new_field_value: str, search_field: str, search_field_value: str) -> bool:
     cursor = db_connection.cursor()
-    sql_statement = """UPDATE %s SET %s = %s WHERE %s = %s""" % (table_name,field,new_value,search_field,search_field_value)
+    sql_statement = """UPDATE %s SET %s = %s WHERE %s = %s """ % (table_name,field,new_field_value,search_field,search_field_value)
     try:
         cursor.execute(sql_statement)
         db_connection.commit()
@@ -81,3 +102,6 @@ async def table_update_value(db_connection: sqlite3.Connection, table_name: str,
     except sqlite3.Error as error:
         print(f"Failed to update field {field}! Error: {error}")
         return False
+
+#UPDATE users_codes SET id = 468424685 WHERE code = H78b4O
+#UPDATE users_codes SET end_time = 10000 + duration WHERE code = "HN80XJ0"

@@ -4,7 +4,6 @@ from telethon.tl.functions.messages import GetDialogsRequest, ImportChatInviteRe
 from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest, GetParticipantsRequest, InviteToChannelRequest,GetFullChannelRequest
 from telethon.tl.types import InputPeerEmpty
 from telethon.tl.types import ChannelParticipantsSearch, ChannelParticipantsRecent
-import sqlite3
 import time
 import sqlite3_controls
 import asyncio
