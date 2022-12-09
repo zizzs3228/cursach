@@ -95,24 +95,40 @@ async def proxy(message:Message):
     else:
         await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 
-@dp.message_handler(content_types=['document'])
-async def photo_or_doc_handler(message: types.Message):
-    file_name = message.document.file_name.split('.')
-    file_destination = f'./{message.from_id}/{message.document.file_name}'
-    await message.document.download(destination_file=file_destination)
+@dp.message_handler(content_types='document')
+async def photo_or_doc_handler(message:Message):
+    if str(message.from_id) in ids:
+        file_name = message.document.file_name.split('.')
+        if len(file_name)==2:
+            file_destination = f'./files/{message.from_id}/{message.document.file_name}'
+            if file_name[1]=='zip':
+                await message.document.download(destination_file=file_destination)
+            elif file_name[1]=="rar":
+                await message.document.download(destination_file=file_destination)
+            elif file_name[1]=='txt':
+                await message.document.download(destination_file=file_destination)
+                proxyfile = open(file_destination)
+                print(proxyfile.read())
+            else:
+                await message.answer('Я могу принять только расширения .zip и .rar для архива с аккаунтами и только .txt для файла с прокси')
+        else:
+            await message.answer('Пришли, пожалуйста, файл с нормальным расширением по типу файл.txt файл.zip файл.rar')
+    else:
+        await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 
 @dp.message_handler()
 async def echo(message: Message):
-    if message.text in codes:
-        await message.answer('Вы ввели правильный инвайт-код',reply_markup=menu_1)
-        await sqlite3_controls.table_update_value(connection_to_codes_db,'users_codes',"id",message.from_id,"code",f'"{message.text}"')
-        await sqlite3_controls.table_update_value(connection_to_codes_db,'users_codes',"end_time",f'{int(time.time())}+duration',"code",f'"{message.text}"')
-        await codes_synchronisation()
-        print(codes)
-        await ids_synchronisation()
-        print(ids)
-    else:
-        await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
+    if str(message.from_id) not in ids:
+        if message.text in codes:
+            await message.answer('Вы ввели правильный инвайт-код',reply_markup=menu_1)
+            await sqlite3_controls.table_update_value(connection_to_codes_db,'users_codes',"id",message.from_id,"code",f'"{message.text}"')
+            await sqlite3_controls.table_update_value(connection_to_codes_db,'users_codes',"end_time",f'{int(time.time())}+duration',"code",f'"{message.text}"')
+            await codes_synchronisation()
+            print(codes)
+            await ids_synchronisation()
+            print(ids)
+        else:
+            await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 
         
     
