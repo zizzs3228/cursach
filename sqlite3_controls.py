@@ -45,6 +45,17 @@ async def table_get_value(db_connection: sqlite3.Connection, table_name: str, va
         print(f"Failed to fetch {field} from {table_name}! Error: {error}")
         return None
 
+async def table_get_value_LUCHSE(db_connection: sqlite3.Connection, table_name: str, value:int,end_time:str='end_time', id:str = 'id') -> list:
+    cursor = db_connection.cursor()
+    sql_statement = """SELECT %s FROM %s WHERE %s = %d""" % (end_time, table_name, id, value)
+    try:
+        cursor.execute(sql_statement)
+        result = cursor.fetchone()
+        return result
+    except sqlite3.Error as error:
+        print(f"Failed to get {value} from {table_name}! Error: {error}")
+        return None
+
 
 async def table_get_codes(db_connection: sqlite3.Connection, table_name: str, id:str='id', column:str = 'code') -> list:
     cursor = db_connection.cursor()
@@ -54,6 +65,16 @@ async def table_get_codes(db_connection: sqlite3.Connection, table_name: str, id
         return cursor.fetchall()
     except sqlite3.Error as error:
         print(f"Failed to fetch {column} from {table_name}! Error: {error}")
+        return None
+
+async def table_delete_row(db_connection: sqlite3.Connection, table_name: str,value:str, end_time:str='end_time') -> None:
+    cursor = db_connection.cursor()
+    sql_statement = """DELETE FROM %s WHERE %s = %d""" % (table_name, end_time, value)
+    try:
+        cursor.execute(sql_statement)
+        return None
+    except sqlite3.Error as error:
+        print(f"Failed to delete {end_time} from {table_name}! Error: {error}")
         return None
 
 async def table_get_ids(db_connection: sqlite3.Connection, table_name: str, id:str='id', column:str = 'id') -> list:
