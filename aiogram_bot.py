@@ -1,26 +1,29 @@
 from asyncio import get_event_loop
 import asyncio
 import sqlite3
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, executor
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import StatesGroup, State
 import sqlite3_controls
 from credentials import bot_token, developer_id_1, developer_id_2, users_db_path, codes_db_path
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.dispatcher.filters import Command, Text
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-import archive_management
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton 
+from aiogram.contrib.fsm_storage.memory import MemoryStorage 
 import rarfile
 import zipfile
 import time
 import os
-import threading
+
 
 bot_loop = asyncio.get_event_loop()
 
 ibot = Bot(bot_token, parse_mode="HTML")
-
-dp = Dispatcher(ibot, loop=bot_loop)
+storage = MemoryStorage()
+dp = Dispatcher(ibot, loop=bot_loop,storage=storage)
 connection_to_users_db = None
 connection_to_codes_db = None
+
 
 codes=[]
 ids=[]
@@ -32,6 +35,9 @@ menu_1=ReplyKeyboardMarkup(
             KeyboardButton(text="/accounts"), 
             KeyboardButton(text="/proxy"),
             KeyboardButton(text="/Myinfo"), 
+        ],
+        [
+            KeyboardButton(text="/Parse")
         ]
              ],
     resize_keyboard=True
@@ -39,7 +45,9 @@ menu_1=ReplyKeyboardMarkup(
 
 
 #reply_markup=ReplyKeyboardRemove()
-
+class usersParse(StatesGroup):
+    link = State()
+    amount = State()
 
 async def user_check_login(user_id: str) -> bool:
     cursor = connection_to_codes_db.cursor()
@@ -67,8 +75,9 @@ async def time_is_up():
     for timing in end_times:
         if timing < time.time():
             await sqlite3_controls.table_delete_row(connection_to_codes_db,'users_codes',timing)
-            await ids_synchronisation()
             await end_times_synchronisation()
+            await ids_synchronisation()
+    
     
 
 
@@ -105,6 +114,7 @@ async def start(message:Message):
 
 @dp.message_handler(Command("proxy"))
 async def proxy(message:Message):
+    await time_is_up()
     if str(message.from_id) in ids:
         await message.answer('Загрузите текстовый(.txt) файл, в котором лежат прокси в формате IP:port:login:password',reply_markup=menu_1)
     else:
@@ -112,6 +122,7 @@ async def proxy(message:Message):
 
 @dp.message_handler(Command("accounts"))
 async def accounts(message:Message):
+    await time_is_up()
     if str(message.from_id) in ids:
         await message.answer('Загрузите архив(.zip или .rar) с аккаунтами, который вы купили. Если вам сайт прислал по одному, то упакуйте все ПАПКИ с файлами .session и .json в один архив и загрузите')
     else:
@@ -119,6 +130,7 @@ async def accounts(message:Message):
 
 @dp.message_handler(Command("Myinfo"))
 async def Myinfo(message:Message):
+    await time_is_up()
     if str(message.from_id) in ids:
         path = f'./files/{message.from_id}'
         proxy = []
@@ -134,10 +146,44 @@ async def Myinfo(message:Message):
         proxy = list(set(proxy))
         await message.answer(f'Вы загрузили {len(proxy)} уникальных прокси и {accscounter} аккаунтов')
         end_time = await sqlite3_controls.table_get_value_LUCHSE(connection_to_codes_db,'users_codes',message.from_id)
-        end_time = int(str(end_time).replace('(','').replace(')','').replace(',',''))
-        await message.answer(f'Ваша подписка истекает {time.ctime(end_time)}')
+        if end_time is not None:
+            end_time = int(str(end_time).replace('(','').replace(')','').replace(',',''))
+            await message.answer(f'Ваша подписка истекает {time.ctime(end_time)}')
     else:
         await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
+
+@dp.message_handler(Command("Parse"))
+async def set_users_parse(message:Message):
+    await message.answer('Введите ссылку на чат, с которого вы хотите спарсить самых активных пользователей')
+    await usersParse.link.set()
+
+@dp.message_handler(state=usersParse.link)
+async def get_link(message:Message,state:FSMContext):
+    #https://t.me/SyndicateCryptocomchat
+    link = message.text
+    link = link.split('/')
+    print(link)
+    pseudolink = 'https://t.me/ijnsafljsngjn'
+    pseudolink = pseudolink.split('/')
+    print(pseudolink)
+    if link[0]==pseudolink[0] and link[2]==pseudolink[2]:
+        await state.update_data(link = message.text)
+        await message.answer('Сколько активных человек спарсить из этого чата? Введите число от 1 до 10000')
+        await usersParse.amount.set()
+    else:
+        await message.answer('Ссылка нерпавильная, введите её в формате https://t.me/')
+        await usersParse.link.set()
+    # await state.update_data(link = message.text)
+    # await message.answer('Сколько активных человек спарсить из этого чата? Введите число от 1 до 10000')
+    # await usersParse.amount.set()
+
+@dp.message_handler(state=usersParse.amount)
+async def get_amount(message:Message,state:FSMContext):
+    await state.update_data(amount = message.text)
+    data = await state.get_data()
+    await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}')
+    await state.finish()
+
 
 @dp.message_handler(content_types='document')
 async def photo_or_doc_handler(message:Message):
@@ -179,6 +225,8 @@ async def echo(message: Message):
             print(codes)
             await ids_synchronisation()
             print(ids)
+            await end_times_synchronisation()
+            print(end_times)
         else:
             await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 

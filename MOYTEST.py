@@ -6,7 +6,6 @@ from telethon.tl.types import InputPeerEmpty
 from telethon.tl.types import ChannelParticipantsSearch, ChannelParticipantsRecent
 import time
 import sqlite3_controls
-import asyncio
 import random
 
 db_name = 'cursach.db'

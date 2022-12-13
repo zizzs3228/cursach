@@ -68,14 +68,18 @@ async def table_get_codes(db_connection: sqlite3.Connection, table_name: str, id
         return None
 
 async def table_delete_row(db_connection: sqlite3.Connection, table_name: str,value:str, end_time:str='end_time') -> None:
-    cursor = db_connection.cursor()
-    sql_statement = """DELETE FROM %s WHERE %s = %d""" % (table_name, end_time, value)
     try:
-        cursor.execute(sql_statement)
-        return None
+        cursor = db_connection.cursor()
+        print("Подключен к SQLite")
+
+        sql_delete_query = """DELETE from %s where %s = %s""" % (table_name,end_time,value)
+        cursor.execute(sql_delete_query)
+        db_connection.commit()
+        print("Запись успешно удалена")
+        cursor.close()
+
     except sqlite3.Error as error:
-        print(f"Failed to delete {end_time} from {table_name}! Error: {error}")
-        return None
+        print("Ошибка при работе с SQLite", error)
 
 async def table_get_ids(db_connection: sqlite3.Connection, table_name: str, id:str='id', column:str = 'id') -> list:
     cursor = db_connection.cursor()
