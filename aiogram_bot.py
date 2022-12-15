@@ -34,10 +34,12 @@ menu_1=ReplyKeyboardMarkup(
         [
             KeyboardButton(text="/accounts"), 
             KeyboardButton(text="/proxy"),
-            KeyboardButton(text="/Myinfo"), 
+            KeyboardButton(text="/myinfo"), 
         ],
         [
-            KeyboardButton(text="/Parse")
+            KeyboardButton(text="/parse"),
+            KeyboardButton(text="/invite"),
+            KeyboardButton(text="/spam")
         ]
              ],
     resize_keyboard=True
@@ -78,8 +80,6 @@ async def time_is_up():
             await end_times_synchronisation()
             await ids_synchronisation()
     
-    
-
 
 async def start_up_preparations(dp):
     # await ibot.send_message(chat_id= developer_id_2,text="Initiating sequence complete. Bot is online.")
@@ -128,7 +128,7 @@ async def accounts(message:Message):
     else:
         await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 
-@dp.message_handler(Command("Myinfo"))
+@dp.message_handler(Command("myinfo"))
 async def Myinfo(message:Message):
     await time_is_up()
     if str(message.from_id) in ids:
@@ -152,7 +152,7 @@ async def Myinfo(message:Message):
     else:
         await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 
-@dp.message_handler(Command("Parse"))
+@dp.message_handler(Command("parse"))
 async def set_users_parse(message:Message):
     await message.answer('Введите ссылку на чат, с которого вы хотите спарсить самых активных пользователей')
     await usersParse.link.set()
@@ -184,6 +184,11 @@ async def get_amount(message:Message,state:FSMContext):
     await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}')
     await state.finish()
 
+@dp.message_handler(Command("invite"))
+async def set_users_invite(message:Message):
+
+    await message.answer('')
+    await usersParse.link.set()
 
 @dp.message_handler(content_types='document')
 async def photo_or_doc_handler(message:Message):
@@ -207,6 +212,38 @@ async def photo_or_doc_handler(message:Message):
                 os.remove(file_destination)
             elif file_name[1]=='txt':
                 await message.document.download(destination_file=file_destination)
+                proxy = []
+                if os.path.isfile(f'./files/{message.from_id}/proxy.txt'):
+                    oldproxyfile = open(f'./files/{message.from_id}/proxy.txt',"w+")
+                    proxy += oldproxyfile.readlines()
+                    newproxyfile = open(file_destination)
+                    newproxy = newproxyfile.readlines()
+                    for proxies in newproxy:
+                        if len(proxies.split(':')) == 4:
+                            proxy.append(proxies)
+                        else:
+                            await message.answer('В вашем текстовом файле лежать прокси в неправильном формате, проверьте, они все должны быть в формате ip:port:логин:пароль')
+                            break
+                    newproxyfile.close()
+                    proxy = [elem.strip()+'\n' for elem in proxy]
+                    os.remove(file_destination)
+                    oldproxyfile.writelines(list(set(proxy)))
+                    oldproxyfile.close()
+                else:
+                    oldproxyfile = open(f'./files/{message.from_id}/proxy.txt',"w+")
+                    newproxyfile = open(file_destination)
+                    newproxy = newproxyfile.readlines()
+                    for proxies in newproxy:
+                        if len(proxies.split(':')) == 4:
+                            proxy.append(proxies)
+                        else:
+                            await message.answer('В вашем текстовом файле лежать прокси в неправильном формате, проверьте, они все должны быть в формате ip:port:логин:пароль')
+                            break
+                    newproxyfile.close()
+                    proxy = [elem.strip()+'\n' for elem in proxy]
+                    os.remove(file_destination)
+                    oldproxyfile.writelines(list(set(proxy)))
+                    oldproxyfile.close()
             else:
                 await message.answer('Я могу принять только расширения .zip и .rar для архива с аккаунтами и только .txt для файла с прокси')
         else:
@@ -236,7 +273,7 @@ if __name__ == "__main__":
     
     executor.start_polling(dp, on_startup=start_up_preparations, on_shutdown=shut_down_warning)
     
-    
+#62.3.23.77:57078:K6J9L73J:wCmQrpVT
 #start 
 #aboba
 #----accs
