@@ -17,3 +17,35 @@ import hashlib
 
 # if link[0]==pseudolink[0] and link[2]==pseudolink[2]:
 #     print(link)
+from telethon import TelegramClient
+from telethon.tl.functions.messages import GetDialogsRequest, ImportChatInviteRequest, CheckChatInviteRequest, AddChatUserRequest
+from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest, GetParticipantsRequest, InviteToChannelRequest,GetFullChannelRequest
+from telethon.tl.types import InputPeerEmpty
+from telethon.tl.types import ChannelParticipantsSearch, ChannelParticipantsRecent
+import socks
+
+proxy = {
+    'proxy_type': 'socks5', # (mandatory) protocol to use (see above)
+    'addr': '62.3.23.77',      # (mandatory) proxy IP address
+    'port': 64965,           # (mandatory) proxy port number
+    'username': 'K6J9L73J',      # (optional) username if the proxy requires auth
+    'password': 'wCmQrpVT',      # (optional) password if the proxy requires auth
+}
+
+proxylist = ['proxy_type','addr','port','username','password']
+proxystr = 'socks5:62.3.23.77:57078:K6J9L73J:wCmQrpVT'
+proxystr = proxystr.split(':')
+print(dict(zip(proxylist,proxystr)))
+
+
+# #aboba = '62.3.23.77:64965:K6J9L73J:wCmQrpVT'
+# aboba = aboba.split(':')
+# client = TelegramClient('./files/468424685/6281213964523/6281213964523', 8, '7245de8e747a0d6fbe11f7cc14fcc0bb',proxy=proxy)
+
+
+# async def main():
+#     await client.send_message('@zizzs3228', 'Да нормально всё')
+
+
+# with client:
+#     client.loop.run_until_complete(main())

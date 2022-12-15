@@ -10,6 +10,7 @@ from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.dispatcher.filters import Command, Text
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton 
 from aiogram.contrib.fsm_storage.memory import MemoryStorage 
+import telethon_bot
 import rarfile
 import zipfile
 import time
@@ -132,18 +133,14 @@ async def accounts(message:Message):
 async def Myinfo(message:Message):
     await time_is_up()
     if str(message.from_id) in ids:
-        path = f'./files/{message.from_id}'
         proxy = []
         accscounter = 0
-        for rootdir, dirs, files in os.walk(path):
+        for rootdir, dirs, files in os.walk(f'./files/{message.from_id}'):
             for file in files:
-                if((file.split('.')[-1])=='txt'):
-                    proxfile = open(os.path.join(rootdir, file))
-                    proxy += proxfile.readlines()
                 if((file.split('.')[-1])=='json'):
                     accscounter+=1
-        proxy = [elem.strip() for elem in proxy]
-        proxy = list(set(proxy))
+        proxfile = open(f'./files/{message.from_id}/proxy.txt')
+        proxy += proxfile.readlines()
         await message.answer(f'Вы загрузили {len(proxy)} уникальных прокси и {accscounter} аккаунтов')
         end_time = await sqlite3_controls.table_get_value_LUCHSE(connection_to_codes_db,'users_codes',message.from_id)
         if end_time is not None:
@@ -182,6 +179,8 @@ async def get_amount(message:Message,state:FSMContext):
     await state.update_data(amount = message.text)
     data = await state.get_data()
     await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}')
+    #await telethon_bot.form_client(message.from_id,True)
+    await telethon_bot.parse(data["link"],message.from_id,data["amount"],connection_to_users_db)
     await state.finish()
 
 @dp.message_handler(Command("invite"))
@@ -214,19 +213,21 @@ async def photo_or_doc_handler(message:Message):
                 await message.document.download(destination_file=file_destination)
                 proxy = []
                 if os.path.isfile(f'./files/{message.from_id}/proxy.txt'):
-                    oldproxyfile = open(f'./files/{message.from_id}/proxy.txt',"w+")
+                    oldproxyfile = open(f'./files/{message.from_id}/proxy.txt',"r")
                     proxy += oldproxyfile.readlines()
+                    oldproxyfile.close()
                     newproxyfile = open(file_destination)
                     newproxy = newproxyfile.readlines()
                     for proxies in newproxy:
                         if len(proxies.split(':')) == 4:
                             proxy.append(proxies)
                         else:
-                            await message.answer('В вашем текстовом файле лежать прокси в неправильном формате, проверьте, они все должны быть в формате ip:port:логин:пароль')
+                            await message.answer('В вашем текстовом файле лежат прокси в неправильном формате, проверьте, они все должны быть в формате ip:port:логин:пароль')
                             break
                     newproxyfile.close()
                     proxy = [elem.strip()+'\n' for elem in proxy]
                     os.remove(file_destination)
+                    oldproxyfile = open(f'./files/{message.from_id}/proxy.txt','w')
                     oldproxyfile.writelines(list(set(proxy)))
                     oldproxyfile.close()
                 else:

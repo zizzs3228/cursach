@@ -103,6 +103,18 @@ async def table_delete(db_connection: sqlite3.Connection, table_name: str) -> bo
         print(f"Failed to delete {table_name}! Error: {error}")
         return False
 
+async def table_flush(db_connection: sqlite3.Connection, table_name: str) -> bool:
+    cursor = db_connection.cursor()
+    sql_statement = """DELETE FROM %s""" % table_name
+    try:
+        cursor.execute(sql_statement)
+        print(f"Table {table_name} successfully flushed!")
+        db_connection.commit()
+        return True
+    except sqlite3.Error as error:
+        print(f"Failed to flush {table_name}! Error: {error}")
+        return False
+
 async def table_fetch_first(db_connection: sqlite3.Connection, table_name: str) -> list:
     cursor = db_connection.cursor()
     sql_statement = """SELECT * FROM %s ORDER BY ROWID ASC LIMIT 1""" % table_name
