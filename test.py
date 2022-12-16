@@ -23,6 +23,7 @@ from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelReque
 from telethon.tl.types import InputPeerEmpty
 from telethon.tl.types import ChannelParticipantsSearch, ChannelParticipantsRecent
 import socks
+import asyncio
 
 proxy = {
     'proxy_type': 'socks5', # (mandatory) protocol to use (see above)
@@ -32,20 +33,40 @@ proxy = {
     'password': 'wCmQrpVT',      # (optional) password if the proxy requires auth
 }
 
-proxylist = ['proxy_type','addr','port','username','password']
-proxystr = 'socks5:62.3.23.77:57078:K6J9L73J:wCmQrpVT'
-proxystr = proxystr.split(':')
-print(dict(zip(proxylist,proxystr)))
+# proxylist = ['proxy_type','addr','port','username','password']
+# proxystr = 'socks5:62.3.23.77:64965:K6J9L73J:wCmQrpVT'
+# proxystr = proxystr.split(':')
+# proxystr[2]=int(proxystr[2])
 
-
-# #aboba = '62.3.23.77:64965:K6J9L73J:wCmQrpVT'
+# proxy = dict(zip(proxylist,proxystr))
+# print(proxy)
+#aboba = '62.3.23.77:64965:K6J9L73J:wCmQrpVT'
 # aboba = aboba.split(':')
-# client = TelegramClient('./files/468424685/6281213964523/6281213964523', 8, '7245de8e747a0d6fbe11f7cc14fcc0bb',proxy=proxy)
+#client = TelegramClient('./files/468424685/6281213964523/6281213964523', 8, '7245de8e747a0d6fbe11f7cc14fcc0bb',proxy=proxy)
 
 
-# async def main():
-#     await client.send_message('@zizzs3228', 'Да нормально всё')
+def test_main(client:TelegramClient):
+    client.send_message('@zizzs3228', 'Люто насрал')
+    
 
 
-# with client:
-#     client.loop.run_until_complete(main())
+
+
+async def main():
+    proxylist = ['proxy_type','addr','port','username','password']
+    proxystr = 'socks5:62.3.23.77:64965:K6J9L73J:wCmQrpVT'
+    proxystr = proxystr.split(':')
+    proxystr[2]=int(proxystr[2])
+
+    proxy = dict(zip(proxylist,proxystr))
+    print(proxy)
+    client = TelegramClient('./files/468424685/6281213964523/6281213964523', 8, '7245de8e747a0d6fbe11f7cc14fcc0bb',proxy=proxy)
+    async with client:
+        await client.start()
+        await client.send_message('@zizzs3228', 'Люто насрал')
+
+
+
+
+if __name__=="__main__":
+    asyncio.run(main()) 

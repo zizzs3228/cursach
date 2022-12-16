@@ -56,7 +56,10 @@ async def invite(link:str, amount:int, user_id:str) -> None:
         
 
 async def parse(link:str, user_id:str) -> None:
+
+    
     channel = await client.get_entity(link)
+
     channel_info = await client(GetFullChannelRequest(channel=channel))
     db_connection = await sqlite3_controls.database_connect(db_name)
     await sqlite3_controls.database_create_table(db_connection, user_id)

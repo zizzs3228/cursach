@@ -13,7 +13,8 @@ async def database_connect(db_path: str) -> sqlite3.Connection:
 async def database_create_table(db_connection: sqlite3.Connection, table_name: str) -> bool:
     cursor = db_connection.cursor()
     
-    sql_statement= """CREATE TABLE %s (id INTEGER NOT NULL UNIQUE, username TEXT, name TEXT, phone TEXT) """ % table_name
+    sql_statement= """CREATE TABLE "%s" (id INTEGER NOT NULL UNIQUE, username TEXT, name TEXT, phone TEXT) """ % table_name
+    
     try:
         cursor.execute(sql_statement)
         print("Successfully created a new table!")
@@ -25,7 +26,8 @@ async def database_create_table(db_connection: sqlite3.Connection, table_name: s
 
 async def table_insert_values(db_connection: sqlite3.Connection, table_name: str, values: list) -> bool:  
     cursor = db_connection.cursor()
-    sql_statement = """INSERT INTO %s VALUES (?,?,?,?)""" % table_name
+    sql_statement = """INSERT INTO "%s" VALUES (?,?,?,?)""" % table_name
+
     try:
         cursor.execute(sql_statement,(values[0],values[1],values[2],values[3],))
         db_connection.commit()
@@ -93,7 +95,7 @@ async def table_get_ids(db_connection: sqlite3.Connection, table_name: str, id:s
 
 async def table_delete(db_connection: sqlite3.Connection, table_name: str) -> bool:
     cursor = db_connection.cursor()
-    sql_statement = """DROP TABLE %s""" % table_name
+    sql_statement = """DROP TABLE "%s" """ % table_name
     try:
         cursor.execute(sql_statement)
         print(f"Table {table_name} successfully deleted!")
@@ -105,7 +107,7 @@ async def table_delete(db_connection: sqlite3.Connection, table_name: str) -> bo
 
 async def table_flush(db_connection: sqlite3.Connection, table_name: str) -> bool:
     cursor = db_connection.cursor()
-    sql_statement = """DELETE FROM %s""" % table_name
+    sql_statement = """DELETE FROM "%s" """ % table_name
     try:
         cursor.execute(sql_statement)
         print(f"Table {table_name} successfully flushed!")
@@ -117,8 +119,8 @@ async def table_flush(db_connection: sqlite3.Connection, table_name: str) -> boo
 
 async def table_fetch_first(db_connection: sqlite3.Connection, table_name: str) -> list:
     cursor = db_connection.cursor()
-    sql_statement = """SELECT * FROM %s ORDER BY ROWID ASC LIMIT 1""" % table_name
-    sql_statement2 = """DELETE FROM %s ORDER BY ROWID ASC LIMIT 1""" % table_name
+    sql_statement = """SELECT * FROM "%s" ORDER BY ROWID ASC LIMIT 1""" % table_name
+    sql_statement2 = """DELETE FROM "%s" ORDER BY ROWID ASC LIMIT 1""" % table_name
     try:
         cursor.execute(sql_statement)
         result = cursor.fetchone()
@@ -140,5 +142,14 @@ async def table_update_value(db_connection: sqlite3.Connection, table_name: str,
         print(f"Failed to update field {field}! Error: {error}")
         return False
 
+async def table_count_rows(db_connection: sqlite3.Connection, table_name: str) -> int:
+    cursor = db_connection.cursor()
+    sql_statement = """SELECT COUNT(*) FROM t1"""
+    try:
+        count = cursor.execute(sql_statement)
+        return count[0]
+    except sqlite3.Error as error:
+        print(f"Failed to count a table! Error: {error}")
+        return None
 #UPDATE users_codes SET id = 468424685 WHERE code = H78b4O
 #UPDATE users_codes SET end_time = 10000 + duration WHERE code = "HN80XJ0"

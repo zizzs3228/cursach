@@ -1,15 +1,16 @@
 from asyncio import get_event_loop
 import asyncio
 import sqlite3
-from aiogram import Bot, Dispatcher, executor
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 import sqlite3_controls
 from credentials import bot_token, developer_id_1, developer_id_2, users_db_path, codes_db_path
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.dispatcher.filters import Command, Text
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton 
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage 
+from aiogram.utils.callback_data import CallbackData
 import telethon_bot
 import rarfile
 import zipfile
@@ -29,6 +30,9 @@ connection_to_codes_db = None
 codes=[]
 ids=[]
 end_times=[]
+cancelmenu = InlineKeyboardMarkup()
+kb_1 = InlineKeyboardButton(text='Отмена', callback_data='cancel')
+cancelmenu.row(kb_1)
 
 menu_1=ReplyKeyboardMarkup(
     keyboard=[
@@ -51,6 +55,11 @@ menu_1=ReplyKeyboardMarkup(
 class usersParse(StatesGroup):
     link = State()
     amount = State()
+
+class usersInvite(StatesGroup):
+    invite_link = State()
+    number_to_invite = State()
+    invite_timeout = State()
 
 async def user_check_login(user_id: str) -> bool:
     cursor = connection_to_codes_db.cursor()
@@ -85,8 +94,8 @@ async def time_is_up():
 async def start_up_preparations(dp):
     # await ibot.send_message(chat_id= developer_id_2,text="Initiating sequence complete. Bot is online.")
     # await ibot.send_message(chat_id=developer_id_1, text="Initiating sequence complete. Bot is online.")
-    global connection_to_users_db 
-    connection_to_users_db = await sqlite3_controls.database_connect(users_db_path)
+    # global connection_to_users_db 
+    # connection_to_users_db = await sqlite3_controls.database_connect(users_db_path)
     global connection_to_codes_db 
     connection_to_codes_db = await sqlite3_controls.database_connect(codes_db_path)
     await codes_synchronisation()
@@ -151,7 +160,7 @@ async def Myinfo(message:Message):
 
 @dp.message_handler(Command("parse"))
 async def set_users_parse(message:Message):
-    await message.answer('Введите ссылку на чат, с которого вы хотите спарсить самых активных пользователей')
+    await message.answer('Введите ссылку на чат, с которого вы хотите спарсить самых активных пользователей',reply_markup=cancelmenu)
     await usersParse.link.set()
 
 @dp.message_handler(state=usersParse.link)
@@ -165,10 +174,10 @@ async def get_link(message:Message,state:FSMContext):
     print(pseudolink)
     if link[0]==pseudolink[0] and link[2]==pseudolink[2]:
         await state.update_data(link = message.text)
-        await message.answer('Сколько активных человек спарсить из этого чата? Введите число от 1 до 10000')
+        await message.answer('Сколько активных человек спарсить из этого чата? Введите число от 1 до 10000',reply_markup=cancelmenu)
         await usersParse.amount.set()
     else:
-        await message.answer('Ссылка нерпавильная, введите её в формате https://t.me/')
+        await message.answer('Ссылка нерпавильная, введите её в формате https://t.me/',reply_markup=cancelmenu)
         await usersParse.link.set()
     # await state.update_data(link = message.text)
     # await message.answer('Сколько активных человек спарсить из этого чата? Введите число от 1 до 10000')
@@ -180,14 +189,64 @@ async def get_amount(message:Message,state:FSMContext):
     data = await state.get_data()
     await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}')
     #await telethon_bot.form_client(message.from_id,True)
-    await telethon_bot.parse(data["link"],message.from_id,data["amount"],connection_to_users_db)
+    await telethon_bot.parse(data["link"],message.from_id,int(data["amount"]))
     await state.finish()
+
+@dp.callback_query_handler(lambda call: call.data == 'cancel',state="*")
+async def cancelation(callback: types.CallbackQuery,state:FSMContext):
+    await state.finish()
+
 
 @dp.message_handler(Command("invite"))
 async def set_users_invite(message:Message):
 
-    await message.answer('')
-    await usersParse.link.set()
+    await message.answer('Введите ссылку, куда хотите приглашать пользователей из базы',reply_markup=cancelmenu)
+
+    await usersInvite.invite_link.set()
+
+@dp.message_handler(state=usersInvite.invite_link)
+async def get_invite_link(message:Message, state:FSMContext):
+    #https://t.me/SyndicateCryptocomchat
+    link = message.text
+    link = link.split('/')
+    print(link)
+    pseudolink = 'https://t.me/ijnsafljsngjn'
+    pseudolink = pseudolink.split('/')
+    print(pseudolink)
+    if link[0]==pseudolink[0] and link[2]==pseudolink[2]:
+        await state.update_data(invite_link = message.text)
+        await message.answer('Ссылка активна. Теперь введите сколько пользователей нужно пригласить?')
+        await usersInvite.number_to_invite.set()
+    else:
+        await message.answer('Ссылка неправильная, введите её в формате https://t.me/')
+        await usersInvite.invite_link.set()
+
+@dp.message_handler(state=usersInvite.number_to_invite)
+async def get_invite_number(message:Message,state:FSMContext):
+    if message.text.isdigit():
+        await state.update_data(number_to_invite = message.text)
+        data = await state.get_data()
+        await message.answer("Количество пользователей принято. Введите задержку между приглашениями (в минутах)(не активно)")
+        await message.answer(f'Вы хотите пригласить {data["number_to_invite"]} пользователей из {data["invite_link"]}')
+        #await telethon_bot.form_client(message.from_id,True)
+        await telethon_bot.invite(data["invite_link"],message.from_id,int(data["number_to_invite"]),0)
+        await state.finish()
+        #await usersInvite.invite_timeout.set()
+    else:
+        await message.answer("Ошибка, количество должно быть числом. Повторите попытку.")       
+        await usersInvite.number_to_invite.set() 
+
+# @dp.message_handler(state = usersInvite.invite_timeout)
+# async def get_invite_timeout(message:Message,state:FSMContext):
+#     pass
+#     if message.text.isdigit():
+#         await state.update_data(number = message.text)
+#         await message.answer("Время задержки принято. ")
+#         await usersInvite.invite_timeout.set()
+#     else:
+#         await message.answer("Ошибка, задержка должна быть числом. Повторите попытку.")       
+#         await usersInvite.number_to_invite.set() 
+
 
 @dp.message_handler(content_types='document')
 async def photo_or_doc_handler(message:Message):
