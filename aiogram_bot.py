@@ -34,6 +34,11 @@ cancelmenu = InlineKeyboardMarkup()
 kb_1 = InlineKeyboardButton(text='Отмена', callback_data='cancel')
 cancelmenu.row(kb_1)
 
+acceptancemenu = InlineKeyboardMarkup()
+yesbutton = InlineKeyboardButton(text='Да', callback_data='yes')
+nobutton = InlineKeyboardButton(text='Нет', callback_data='cancel')
+acceptancemenu.row(yesbutton).row(nobutton)
+
 menu_1=ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -55,11 +60,17 @@ menu_1=ReplyKeyboardMarkup(
 class usersParse(StatesGroup):
     link = State()
     amount = State()
+    acceptance = State()
 
 class usersInvite(StatesGroup):
     invite_link = State()
     number_to_invite = State()
-    invite_timeout = State()
+    acceptance = State()
+
+class usersMail(StatesGroup):
+    mail_text = State()
+    mail_user_number = State()
+    acceptance = State()
 
 async def user_check_login(user_id: str) -> bool:
     cursor = connection_to_codes_db.cursor()
@@ -106,9 +117,6 @@ async def start_up_preparations(dp):
     print(end_times)
     await time_is_up()
 
-
-
-
 async def shut_down_warning(dp):
 #    await ibot.send_message(chat_id=developer_id_2, text="Termination order recieved. Shutting down.",reply_markup=ReplyKeyboardRemove())
 #    await ibot.send_message(chat_id=developer_id_1, text="Termination order recieved. Shutting down.",reply_markup=ReplyKeyboardRemove())
@@ -121,7 +129,25 @@ async def start(message:Message):
     print(f"From {message.from_user} recieved {message.text}")
     await message.answer(f"Здравствуйте {message.from_user.first_name}, введите инвайт-код с этого сайта (ссылка)")
 
+@dp.callback_query_handler(lambda call: call.data == 'cancel',state="*")
+async def cancelation(callback: types.CallbackQuery,state:FSMContext):
+    await ibot.send_message(callback.from_user.id,'Отменено...',reply_markup=menu_1)
+    await state.finish()
 
+@dp.callback_query_handler(lambda call: call.data == 'yes',state=usersParse.acceptance)
+async def ParseAcceptance(callback: types.CallbackQuery,state:FSMContext):
+    data = await state.get_data()
+    await telethon_bot.parse(data["link"],callback.from_user.id,int(data["amount"]))
+    await ibot.send_message(callback.from_user.id,'Парсинг начался',reply_markup=menu_1)
+    await state.finish()
+
+@dp.callback_query_handler(lambda call: call.data == 'yes',state=usersInvite.acceptance)
+async def InviteAcceptance(callback: types.CallbackQuery,state:FSMContext):
+    data = await state.get_data()
+    await telethon_bot.invite(data["invite_link"],callback.from_user.id,int(data["number_to_invite"]),0)
+    await ibot.send_message(callback.from_user.id,'Приглашения начались',reply_markup=menu_1)
+    await state.finish()
+    
 @dp.message_handler(Command("proxy"))
 async def proxy(message:Message):
     await time_is_up()
@@ -187,14 +213,12 @@ async def get_link(message:Message,state:FSMContext):
 async def get_amount(message:Message,state:FSMContext):
     await state.update_data(amount = message.text)
     data = await state.get_data()
-    await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}')
+    await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}?',reply_markup=acceptancemenu)
     #await telethon_bot.form_client(message.from_id,True)
-    await telethon_bot.parse(data["link"],message.from_id,int(data["amount"]))
-    await state.finish()
+    await usersParse.acceptance.set()
+    #await telethon_bot.parse(data["link"],message.from_id,int(data["amount"]))
 
-@dp.callback_query_handler(lambda call: call.data == 'cancel',state="*")
-async def cancelation(callback: types.CallbackQuery,state:FSMContext):
-    await state.finish()
+    #await state.finish()
 
 
 @dp.message_handler(Command("invite"))
@@ -215,10 +239,10 @@ async def get_invite_link(message:Message, state:FSMContext):
     print(pseudolink)
     if link[0]==pseudolink[0] and link[2]==pseudolink[2]:
         await state.update_data(invite_link = message.text)
-        await message.answer('Ссылка активна. Теперь введите сколько пользователей нужно пригласить?')
+        await message.answer('Ссылка активна. Теперь введите сколько пользователей нужно пригласить?',reply_markup=cancelmenu)
         await usersInvite.number_to_invite.set()
     else:
-        await message.answer('Ссылка неправильная, введите её в формате https://t.me/')
+        await message.answer('Ссылка неправильная, введите её в формате https://t.me/',reply_markup=cancelmenu)
         await usersInvite.invite_link.set()
 
 @dp.message_handler(state=usersInvite.number_to_invite)
@@ -226,15 +250,20 @@ async def get_invite_number(message:Message,state:FSMContext):
     if message.text.isdigit():
         await state.update_data(number_to_invite = message.text)
         data = await state.get_data()
-        await message.answer("Количество пользователей принято. Введите задержку между приглашениями (в минутах)(не активно)")
-        await message.answer(f'Вы хотите пригласить {data["number_to_invite"]} пользователей из {data["invite_link"]}')
+        await message.answer(f'Вы хотите пригласить {data["number_to_invite"]} пользователей из {data["invite_link"]}?',reply_markup=acceptancemenu)
+        await usersInvite.acceptance.set()
         #await telethon_bot.form_client(message.from_id,True)
-        await telethon_bot.invite(data["invite_link"],message.from_id,int(data["number_to_invite"]),0)
-        await state.finish()
+        #await telethon_bot.invite(data["invite_link"],message.from_id,int(data["number_to_invite"]),0)
+        #await state.finish()
         #await usersInvite.invite_timeout.set()
     else:
-        await message.answer("Ошибка, количество должно быть числом. Повторите попытку.")       
+        await message.answer("Ошибка, количество должно быть числом. Повторите попытку.",reply_markup=cancelmenu)       
         await usersInvite.number_to_invite.set() 
+
+@dp.message_handler(Command("mail"))
+async def set_users_mail(message:Message):
+    await message.answer(f'Вы собираетесь запустить рассылку из базы данных на ',reply_markup=cancelmenu)
+    pass
 
 # @dp.message_handler(state = usersInvite.invite_timeout)
 # async def get_invite_timeout(message:Message,state:FSMContext):
@@ -315,7 +344,7 @@ async def photo_or_doc_handler(message:Message):
 async def echo(message: Message):
     if str(message.from_id) not in ids:
         if message.text in codes:
-            await message.answer('Вы ввели правильный инвайт-код',reply_markup=menu_1)
+            await ibot.send_message(chat_id=message.from_id,text = 'Вы ввели правильный инвайт-код',reply_markup=menu_1)
             await sqlite3_controls.table_update_value(connection_to_codes_db,'users_codes',"id",message.from_id,"code",f'"{message.text}"')
             await sqlite3_controls.table_update_value(connection_to_codes_db,'users_codes',"end_time",f'{int(time.time())}+duration',"code",f'"{message.text}"')
             await codes_synchronisation()

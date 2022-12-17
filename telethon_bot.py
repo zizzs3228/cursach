@@ -81,15 +81,13 @@ async def form_client(source_user_id:int) -> TelegramClient:
     return client
 
 
-if __name__ == "__main__":
-    asyncio.run(form_client(468424685))
 
 
 
+async def check_limit(number_of_users:int, limit:int) -> bool:
+    return number_of_users>limit
 
 async def parse(link_to_parse:str, user_id:str, parse_limit:int) -> None:
-  
-    
     client = await form_client(user_id)
     await client.start()
     channel_to_parse = await client.get_entity(link_to_parse)
@@ -131,13 +129,19 @@ async def invite(chat_to_invite:str, user_id:str, invite_limit:int, invite_pace:
     current_user = []
     client = await form_client(user_id)
     await client.start()
+    users_in_db = await sqlite3_controls.table_count_rows(db_connection,user_id)
+
     channel = await client.get_entity(chat_to_invite)
+    if await check_limit(users_in_db,invite_limit):
+        users_in_db = invite_limit
+    print(f"Order to invite recieved from {user_id}, inviting {users_in_db} users to {channel.id}")
     if not channel.megagroup:
-        print("User {user_id} provided link to channel!")
+        print("User {user_id} provided link to channel, quitting!")
         await client.disconnect()
+        db_connection.close()
         return False
     else:
-        for i in range(0, invite_limit):
+        async for i in range(0, users_in_db):
             current_user = await sqlite3_controls.table_fetch_first(db_connection, user_id)
             if current_user:
                 try:
@@ -148,5 +152,26 @@ async def invite(chat_to_invite:str, user_id:str, invite_limit:int, invite_pace:
                     print(f"Пользователь {current_user[0]} не может быть приглашен")
             else:
                 print("We run out of users!")
+        db_connection.close()
         await client.disconnect()
         return True
+
+async def mailing(user_id:int, mail_text:str, mail_limit:int) -> bool:
+    db_connection = await sqlite3_controls.database_connect(users_db_path)
+    
+    client = await form_client(user_id)
+    await client.start()
+    number_of_users_to_mail = await sqlite3_controls.table_count_rows(db_connection, user_id)
+    if await check_limit(number_of_users_to_mail,mail_limit):
+        number_of_users_to_mail = mail_limit
+    print(f"Order to mail recieved from {user_id}, mailing {number_of_users_to_mail} users")
+    async for row_id in range(0, number_of_users_to_mail):
+        invite_user_id = (await sqlite3_controls.table_fetch_first(db_connection, user_id))[0]
+        invite_user_entity = await client.get_entity(invite_user_id)
+        await client.send_message(invite_user_entity, message=mail_text)
+    print("Mailing finished!")
+    await client.disconnect()
+    return True
+
+if __name__ == "__main__":
+    asyncio.run(mailing(468424685, "test"))
