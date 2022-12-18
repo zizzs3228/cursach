@@ -137,8 +137,9 @@ async def cancelation(callback: types.CallbackQuery,state:FSMContext):
 @dp.callback_query_handler(lambda call: call.data == 'yes',state=usersParse.acceptance)
 async def ParseAcceptance(callback: types.CallbackQuery,state:FSMContext):
     data = await state.get_data()
+    await ibot.send_message(callback.from_user.id,'Парсинг начался')
     await telethon_bot.parse(data["link"],callback.from_user.id,int(data["amount"]))
-    await ibot.send_message(callback.from_user.id,'Парсинг начался',reply_markup=menu_1)
+    await ibot.send_message(callback.from_user.id,'Парсинг закончен',reply_markup=menu_1)
     await state.finish()
 
 @dp.callback_query_handler(lambda call: call.data == 'yes',state=usersInvite.acceptance)
