@@ -55,10 +55,6 @@ async def table_get_value_LUCHSE(db_connection: sqlite3.Connection, table_name: 
         print(f"Failed to get {value} from {table_name}! Error: {error}")
         return None
 
-
-
-
-
 async def table_get_codes(db_connection: sqlite3.Connection, table_name: str, id:str='id', column:str = 'code') -> list:
     cursor = db_connection.cursor()
     sql_statement = """SELECT %s FROM %s WHERE %s IS NULL""" % (column,table_name, id)
@@ -73,7 +69,6 @@ async def table_delete_row(db_connection: sqlite3.Connection, table_name: str,va
     try:
         cursor = db_connection.cursor()
         print("Подключен к SQLite")
-
         sql_delete_query = """DELETE from %s where %s = %s""" % (table_name,end_time,value)
         cursor.execute(sql_delete_query)
         db_connection.commit()

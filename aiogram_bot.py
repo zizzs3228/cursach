@@ -49,7 +49,7 @@ menu_1=ReplyKeyboardMarkup(
         [
             KeyboardButton(text="/parse"),
             KeyboardButton(text="/invite"),
-            KeyboardButton(text="/spam")
+            KeyboardButton(text="/mail")
         ]
              ],
     resize_keyboard=True
@@ -148,6 +148,12 @@ async def InviteAcceptance(callback: types.CallbackQuery,state:FSMContext):
     await telethon_bot.invite(data["invite_link"],callback.from_user.id,int(data["number_to_invite"]),0)
     await ibot.send_message(callback.from_user.id,'Приглашения начались',reply_markup=menu_1)
     await state.finish()
+
+@dp.callback_query_handler(lambda call: call.data == 'yes',state=usersMail.acceptance)
+async def MailAcceptance(callback: types.CallbackQuery,state:FSMContext):
+    data = await state.get_data()
+    await ibot.send_message(callback.from_user.id,'Рассылка началась',reply_markup=menu_1)
+    await state.finish()
     
 @dp.message_handler(Command("proxy"))
 async def proxy(message:Message):
@@ -212,12 +218,16 @@ async def get_link(message:Message,state:FSMContext):
 
 @dp.message_handler(state=usersParse.amount)
 async def get_amount(message:Message,state:FSMContext):
-    await state.update_data(amount = message.text)
-    data = await state.get_data()
-    await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}?',reply_markup=acceptancemenu)
-    #await telethon_bot.form_client(message.from_id,True)
-    await usersParse.acceptance.set()
-    #await telethon_bot.parse(data["link"],message.from_id,int(data["amount"]))
+    if message.text.isdigit():
+        await state.update_data(amount = message.text)
+        data = await state.get_data()
+        await message.answer(f'Вы хотите спарсить {data["amount"]} пользователей из {data["link"]}?',reply_markup=acceptancemenu)
+        #await telethon_bot.form_client(message.from_id,True)
+        await usersParse.acceptance.set()
+        #await telethon_bot.parse(data["link"],message.from_id,int(data["amount"]))
+    else:
+        await message.answer(f'Вы ввели не число, введите, пожалуйста, число',reply_markup=cancelmenu)
+        await usersParse.amount.set()
 
     #await state.finish()
 
@@ -263,8 +273,37 @@ async def get_invite_number(message:Message,state:FSMContext):
 
 @dp.message_handler(Command("mail"))
 async def set_users_mail(message:Message):
-    await message.answer(f'Вы собираетесь запустить рассылку из базы данных на ',reply_markup=cancelmenu)
-    pass
+    connection_to_users_db = await sqlite3_controls.database_connect(users_db_path)
+    rowscount = await sqlite3_controls.table_count_rows(connection_to_users_db,str(message.from_id))
+    connection_to_users_db.close()
+    if rowscount==0:
+        await message.answer(f'В ваше базе данных нет пользователей введите команду /parse для того, чтобы спарсить пользователей')
+    else:
+        await message.answer(f'В вашей базе пользователей {rowscount} уникальных пользователей')
+        await message.answer(f'Введите число пользователей, которым хотите разослать сообщение. От 1 до {rowscount}',reply_markup=cancelmenu)
+        await usersMail.mail_user_number.set()
+    
+@dp.message_handler(state=usersMail.mail_user_number)
+async def get_mail_text(message:Message,state:FSMContext):
+    if message.text.isdigit():
+        await state.update_data(number_to_invite = message.text)
+        data = await state.get_data()
+        await message.answer(f'Введите сообщение, которое хотите разослать этим людям',reply_markup=cancelmenu)
+        await usersMail.mail_text.set()
+        #await telethon_bot.form_client(message.from_id,True)
+        #await telethon_bot.invite(data["invite_link"],message.from_id,int(data["number_to_invite"]),0)
+        #await state.finish()
+        #await usersInvite.invite_timeout.set()
+    else:
+        await message.answer("Ошибка, количество должно быть числом. Повторите попытку.",reply_markup=cancelmenu)       
+        await usersMail.mail_user_number.set() 
+
+@dp.message_handler(state=usersMail.mail_text)
+async def get_mail_acceptance(message:Message,state:FSMContext):
+    await state.update_data(messagetext = message.text)
+    data = await state.get_data()
+    await message.answer(f'Вы хотите разослать {data["number_to_invite"]} пользователям это сообщение: {data["messagetext"]}   ?',reply_markup=acceptancemenu)
+    await usersMail.acceptance.set()
 
 # @dp.message_handler(state = usersInvite.invite_timeout)
 # async def get_invite_timeout(message:Message,state:FSMContext):
