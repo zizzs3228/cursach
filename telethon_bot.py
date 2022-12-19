@@ -158,7 +158,6 @@ async def invite(chat_to_invite:str, user_id:str, invite_limit:int, invite_pace:
 
 async def mailing(user_id:int, mail_text:str, mail_limit:int) -> bool:
     db_connection = await sqlite3_controls.database_connect(users_db_path)
-    
     client = await form_client(user_id)
     await client.start()
     number_of_users_to_mail = await sqlite3_controls.table_count_rows(db_connection, user_id)

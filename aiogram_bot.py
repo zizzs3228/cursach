@@ -145,7 +145,7 @@ async def ParseAcceptance(callback: types.CallbackQuery,state:FSMContext):
 @dp.callback_query_handler(lambda call: call.data == 'yes',state=usersInvite.acceptance)
 async def InviteAcceptance(callback: types.CallbackQuery,state:FSMContext):
     data = await state.get_data()
-    await telethon_bot.invite(data["invite_link"],callback.from_user.id,int(data["number_to_invite"]),0)
+    #await telethon_bot.invite(data["invite_link"],callback.from_user.id,int(data["number_to_invite"]),0)
     await ibot.send_message(callback.from_user.id,'Приглашения начались',reply_markup=menu_1)
     await state.finish()
 
@@ -285,17 +285,13 @@ async def set_users_mail(message:Message):
     
 @dp.message_handler(state=usersMail.mail_user_number)
 async def get_mail_text(message:Message,state:FSMContext):
-    if message.text.isdigit():
+    if message.text.isdigit() and int(message.text)>0:
         await state.update_data(number_to_invite = message.text)
         data = await state.get_data()
         await message.answer(f'Введите сообщение, которое хотите разослать этим людям',reply_markup=cancelmenu)
         await usersMail.mail_text.set()
-        #await telethon_bot.form_client(message.from_id,True)
-        #await telethon_bot.invite(data["invite_link"],message.from_id,int(data["number_to_invite"]),0)
-        #await state.finish()
-        #await usersInvite.invite_timeout.set()
     else:
-        await message.answer("Ошибка, количество должно быть числом. Повторите попытку.",reply_markup=cancelmenu)       
+        await message.answer("Ошибка, количество должно быть числом больше 0. Повторите попытку.",reply_markup=cancelmenu)       
         await usersMail.mail_user_number.set() 
 
 @dp.message_handler(state=usersMail.mail_text)
