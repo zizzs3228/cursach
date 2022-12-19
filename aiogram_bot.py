@@ -145,7 +145,7 @@ async def ParseAcceptance(callback: types.CallbackQuery,state:FSMContext):
 @dp.callback_query_handler(lambda call: call.data == 'yes',state=usersInvite.acceptance)
 async def InviteAcceptance(callback: types.CallbackQuery,state:FSMContext):
     data = await state.get_data()
-    #await telethon_bot.invite(data["invite_link"],callback.from_user.id,int(data["number_to_invite"]),0)
+    await telethon_bot.invite(data["invite_link"],callback.from_user.id,int(data["number_to_invite"]),0)
     await ibot.send_message(callback.from_user.id,'Приглашения начались',reply_markup=menu_1)
     await state.finish()
 
@@ -153,6 +153,7 @@ async def InviteAcceptance(callback: types.CallbackQuery,state:FSMContext):
 async def MailAcceptance(callback: types.CallbackQuery,state:FSMContext):
     data = await state.get_data()
     await ibot.send_message(callback.from_user.id,'Рассылка началась',reply_markup=menu_1)
+    await telethon_bot.mailing(callback.from_user.id,data["messagetext"],data['number_to_mail'])
     await state.finish()
     
 @dp.message_handler(Command("proxy"))
@@ -188,6 +189,8 @@ async def Myinfo(message:Message):
         if end_time is not None:
             end_time = int(str(end_time).replace('(','').replace(')','').replace(',',''))
             await message.answer(f'Ваша подписка истекает {time.ctime(end_time)}')
+            connection_to_users_db = await sqlite3_controls.database_connect(users_db_path)
+            await message.answer(f'В ваше базе {await sqlite3_controls.table_count_rows(connection_to_users_db,message.from_id)} уникальных пользователей')
     else:
         await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 
@@ -286,7 +289,7 @@ async def set_users_mail(message:Message):
 @dp.message_handler(state=usersMail.mail_user_number)
 async def get_mail_text(message:Message,state:FSMContext):
     if message.text.isdigit() and int(message.text)>0:
-        await state.update_data(number_to_invite = message.text)
+        await state.update_data(number_to_mail = message.text)
         data = await state.get_data()
         await message.answer(f'Введите сообщение, которое хотите разослать этим людям',reply_markup=cancelmenu)
         await usersMail.mail_text.set()
@@ -298,7 +301,7 @@ async def get_mail_text(message:Message,state:FSMContext):
 async def get_mail_acceptance(message:Message,state:FSMContext):
     await state.update_data(messagetext = message.text)
     data = await state.get_data()
-    await message.answer(f'Вы хотите разослать {data["number_to_invite"]} пользователям это сообщение: {data["messagetext"]}   ?',reply_markup=acceptancemenu)
+    await message.answer(f'Вы хотите разослать {data["number_to_mail"]} пользователям это сообщение: {data["messagetext"]}   ?',reply_markup=acceptancemenu)
     await usersMail.acceptance.set()
 
 # @dp.message_handler(state = usersInvite.invite_timeout)

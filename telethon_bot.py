@@ -19,11 +19,26 @@ async def proxymaker(proxystr:str)->dict:
     proxystr[2] = int(proxystr[2])
     return dict(zip(proxylist,proxystr))
     
+class FetchingFirst:
+    def __init__(self, db_connection,db_table_name,last_to_invite):
+        # Здесь хранится промежуточное значение
+        self.db_connection = db_connection
+        self.db_table_name = db_table_name
+        self.counter = 0
+        self.last_to_invite = last_to_invite
 
+    async def __anext__(self):
+        # Здесь мы обновляем значение и возвращаем результат
+        id = await sqlite3_controls.table_fetch_first(self.db_connection, self.db_table_name)
+        self.counter += 1
+        if id is None or self.counter>=int(self.last_to_invite):
+            raise StopAsyncIteration 
+        else:
+            return list(id)[0]
 
-
-
-
+    def __aiter__(self):
+        """Этот метод позволяет при передаче объекта функции iter возвращать самого себя, тем самым в точности реализуя протокол итератора."""
+        return self
 
 async def fs_manager(id:int, get_proxy:bool) -> str:
     path = f"/home/zizzs/cursach/files/{id}" 
@@ -85,7 +100,7 @@ async def form_client(source_user_id:int) -> TelegramClient:
 
 
 async def check_limit(number_of_users:int, limit:int) -> bool:
-    return number_of_users>limit
+    return number_of_users>int(limit)
 
 async def parse(link_to_parse:str, user_id:str, parse_limit:int) -> None:
     client = await form_client(user_id)
@@ -141,17 +156,14 @@ async def invite(chat_to_invite:str, user_id:str, invite_limit:int, invite_pace:
         db_connection.close()
         return False
     else:
-        async for i in range(0, users_in_db):
-            current_user = await sqlite3_controls.table_fetch_first(db_connection, user_id)
-            if current_user:
-                try:
-                    #await client(AddChatUserRequest(channel.id, current_user[0],fwd_limit=500))
-                    print(f"Пользователь {current_user[0]} приглашён в {channel.id}")
-                    #time.sleep(invite_pace)
-                except: 
-                    print(f"Пользователь {current_user[0]} не может быть приглашен")
-            else:
-                print("We run out of users!")
+        iditerator = FetchingFirst(db_connection,user_id,invite_limit)
+        async for id in iditerator:
+            try:
+                #await client(AddChatUserRequest(channel.id, current_user[0],fwd_limit=500))
+                print(f"Пользователь {id} приглашён в {channel.id}")
+                #time.sleep(invite_pace)
+            except: 
+                print(f"Пользователь {current_user[0]} не может быть приглашен")
         db_connection.close()
         await client.disconnect()
         return True
@@ -164,10 +176,11 @@ async def mailing(user_id:int, mail_text:str, mail_limit:int) -> bool:
     if await check_limit(number_of_users_to_mail,mail_limit):
         number_of_users_to_mail = mail_limit
     print(f"Order to mail recieved from {user_id}, mailing {number_of_users_to_mail} users")
-    async for row_id in range(0, number_of_users_to_mail):
-        invite_user_id = (await sqlite3_controls.table_fetch_first(db_connection, user_id))[0]
-        invite_user_entity = await client.get_entity(invite_user_id)
-        await client.send_message(invite_user_entity, message=mail_text)
+    iditerator = FetchingFirst(db_connection,user_id,mail_limit)
+    async for id in iditerator:
+        #invite_user_entity = await client.get_entity(id)
+        #await client.send_message(invite_user_entity, message=mail_text)
+        print(f'Пользователю {id} отправлено сообщение {mail_text}')
     print("Mailing finished!")
     await client.disconnect()
     return True
