@@ -24,8 +24,8 @@ class FetchingFirst:
 
 async def main():
     db_connection = await sqlite3_controls.database_connect('cursach.db')
-    aboba = FetchingFirst(db_connection,'468424685')
-    async for id in aboba:
+    iditerator = FetchingFirst(db_connection,'468424685')
+    async for id in iditerator:
         print(id)
 
 
