@@ -196,8 +196,11 @@ async def Myinfo(message:Message):
 
 @dp.message_handler(Command("parse"))
 async def set_users_parse(message:Message):
-    await message.answer('Введите ссылку на чат, с которого вы хотите спарсить самых активных пользователей',reply_markup=cancelmenu)
-    await usersParse.link.set()
+    if str(message.from_id) in ids:
+        await message.answer('Введите ссылку на чат, с которого вы хотите спарсить самых активных пользователей',reply_markup=cancelmenu)
+        await usersParse.link.set()
+    else:
+        await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
 
 @dp.message_handler(state=usersParse.link)
 async def get_link(message:Message,state:FSMContext):
@@ -237,10 +240,12 @@ async def get_amount(message:Message,state:FSMContext):
 
 @dp.message_handler(Command("invite"))
 async def set_users_invite(message:Message):
-
-    await message.answer('Введите ссылку, куда хотите приглашать пользователей из базы',reply_markup=cancelmenu)
-
-    await usersInvite.invite_link.set()
+    if str(message.from_id) in ids:
+        await message.answer('Введите ссылку, куда хотите приглашать пользователей из базы',reply_markup=cancelmenu)
+        await usersInvite.invite_link.set()
+    else:
+        await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
+    
 
 @dp.message_handler(state=usersInvite.invite_link)
 async def get_invite_link(message:Message, state:FSMContext):
@@ -253,15 +258,23 @@ async def get_invite_link(message:Message, state:FSMContext):
     print(pseudolink)
     if link[0]==pseudolink[0] and link[2]==pseudolink[2]:
         await state.update_data(invite_link = message.text)
-        await message.answer('Ссылка активна. Теперь введите сколько пользователей нужно пригласить?',reply_markup=cancelmenu)
-        await usersInvite.number_to_invite.set()
+        connection_to_users_db = await sqlite3_controls.database_connect(users_db_path)
+        rowscount = await sqlite3_controls.table_count_rows(connection_to_users_db,str(message.from_id))
+        connection_to_users_db.close()
+        if rowscount==0:
+            await message.answer(f'В ваше базе данных нет пользователей введите команду /parse для того, чтобы спарсить пользователей')
+            await state.finish()
+        else:
+            await message.answer(f'В вашей базе пользователей {rowscount} уникальных пользователей')
+            await message.answer(f'Введите число пользователей, которым хотите разослать сообщение. От 1 до {rowscount}',reply_markup=cancelmenu)
+            await usersInvite.number_to_invite.set()
     else:
         await message.answer('Ссылка неправильная, введите её в формате https://t.me/',reply_markup=cancelmenu)
         await usersInvite.invite_link.set()
 
 @dp.message_handler(state=usersInvite.number_to_invite)
 async def get_invite_number(message:Message,state:FSMContext):
-    if message.text.isdigit():
+    if message.text.isdigit() and int(message.text)>0:
         await state.update_data(number_to_invite = message.text)
         data = await state.get_data()
         await message.answer(f'Вы хотите пригласить {data["number_to_invite"]} пользователей из {data["invite_link"]}?',reply_markup=acceptancemenu)
@@ -276,15 +289,19 @@ async def get_invite_number(message:Message,state:FSMContext):
 
 @dp.message_handler(Command("mail"))
 async def set_users_mail(message:Message):
-    connection_to_users_db = await sqlite3_controls.database_connect(users_db_path)
-    rowscount = await sqlite3_controls.table_count_rows(connection_to_users_db,str(message.from_id))
-    connection_to_users_db.close()
-    if rowscount==0:
-        await message.answer(f'В ваше базе данных нет пользователей введите команду /parse для того, чтобы спарсить пользователей')
+    if str(message.from_id) in ids:
+        connection_to_users_db = await sqlite3_controls.database_connect(users_db_path)
+        rowscount = await sqlite3_controls.table_count_rows(connection_to_users_db,str(message.from_id))
+        connection_to_users_db.close()
+        if rowscount==0:
+            await message.answer(f'В ваше базе данных нет пользователей введите команду /parse для того, чтобы спарсить пользователей')
+        else:
+            await message.answer(f'В вашей базе пользователей {rowscount} уникальных пользователей')
+            await message.answer(f'Введите число пользователей, которым хотите разослать сообщение. От 1 до {rowscount}',reply_markup=cancelmenu)
+            await usersMail.mail_user_number.set()
     else:
-        await message.answer(f'В вашей базе пользователей {rowscount} уникальных пользователей')
-        await message.answer(f'Введите число пользователей, которым хотите разослать сообщение. От 1 до {rowscount}',reply_markup=cancelmenu)
-        await usersMail.mail_user_number.set()
+        await message.answer('Введите ваш инвайт-код, купив его на этом сайте (ссылка)')
+    
     
 @dp.message_handler(state=usersMail.mail_user_number)
 async def get_mail_text(message:Message,state:FSMContext):
