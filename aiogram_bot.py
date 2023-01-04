@@ -182,8 +182,11 @@ async def Myinfo(message:Message):
             for file in files:
                 if((file.split('.')[-1])=='json'):
                     accscounter+=1
-        proxfile = open(f'./files/{message.from_id}/proxy.txt')
-        proxy += proxfile.readlines()
+        if os.path.exists(f'./files/{message.from_id}/proxy.txt'):
+            proxfile = open(f'./files/{message.from_id}/proxy.txt')
+            proxy += proxfile.readlines()
+        else:
+            proxy=[]
         await message.answer(f'Вы загрузили {len(proxy)} уникальных прокси и {accscounter} аккаунтов')
         end_time = await sqlite3_controls.table_get_value_LUCHSE(connection_to_codes_db,'users_codes',message.from_id)
         if end_time is not None:

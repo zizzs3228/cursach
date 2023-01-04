@@ -1,6 +1,7 @@
 import sqlite3_controls
 import json
 import os
+import random
 import time
 import asyncio
 from credentials import users_db_path
@@ -53,7 +54,7 @@ async def fs_manager(id:int, get_proxy:bool) -> str:
         with open(path+"/proxy.txt", 'w') as proxy:      
             try:
                 proxy_to_return = proxy_list.pop(0)
-                proxy.writelines(proxy_list)
+                proxy.writelines(proxy_to_return)
                 proxy.flush()
                 return proxy_to_return
             except IndexError as error:
@@ -142,30 +143,28 @@ async def parse(link_to_parse:str, user_id:str, parse_limit:int) -> None:
 async def invite(chat_to_invite:str, user_id:str, invite_limit:int, invite_pace:int = 300) -> bool:
     db_connection = await sqlite3_controls.database_connect(users_db_path)
     current_user = []
+    
+    users_in_db = await sqlite3_controls.table_count_rows(db_connection,user_id)
     client = await form_client(user_id)
     await client.start()
-    users_in_db = await sqlite3_controls.table_count_rows(db_connection,user_id)
-
+    #await client(JoinChannelRequest(chat_to_invite))
     channel = await client.get_entity(chat_to_invite)
     if await check_limit(users_in_db,invite_limit):
         users_in_db = invite_limit
-    print(f"Order to invite recieved from {user_id}, inviting {users_in_db} users to {channel.id}")
-    if not channel.megagroup:
-        print("User {user_id} provided link to channel, quitting!")
-        await client.disconnect()
-        db_connection.close()
-        return False
-    else:
+        print(f"Order to invite recieved from {user_id}, inviting {users_in_db}")
         iditerator = FetchingFirst(db_connection,user_id,invite_limit)
+        #await client.send_message('@zizzs3228', message='Привет')
         async for id in iditerator:
             try:
-                #await client(AddChatUserRequest(channel.id, current_user[0],fwd_limit=500))
+                await client(InviteToChannelRequest(channel.id, users=[id]))
+                print(channel.id,id)
                 print(f"Пользователь {id} приглашён в {channel.id}")
-                #time.sleep(invite_pace)
-            except: 
-                print(f"Пользователь {current_user[0]} не может быть приглашен")
+                time.sleep(random.randint(300-30,400+30))
+            except Exception as e:
+                print(f"Пользователь {id} не может быть приглашен,{e}")
+                time.sleep(random.randint(300-30,400+30))
         db_connection.close()
-        await client.disconnect()
+        
         return True
 
 async def mailing(user_id:int, mail_text:str, mail_limit:int) -> bool:
